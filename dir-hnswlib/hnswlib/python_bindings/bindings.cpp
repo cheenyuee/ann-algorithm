@@ -21,6 +21,7 @@ using namespace pybind11::literals;  // needed to bring in _a literal
  */
 template<class Function>
 inline void ParallelFor(size_t start, size_t end, size_t numThreads, Function fn) {
+    /// 多线程实现
     if (numThreads <= 0) {
         numThreads = std::thread::hardware_concurrency();
     }

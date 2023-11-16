@@ -1,7 +1,9 @@
 #include "../../hnswlib/hnswlib.h"
 #include <thread>
 
-
+/**
+ * 一个高效的多线程实现
+ */
 // Multithreaded executor
 // The helper function copied from python_bindings/bindings.cpp (and that itself is copied from nmslib)
 // An alternative is using #pragme omp parallel for or any other C++ threading
