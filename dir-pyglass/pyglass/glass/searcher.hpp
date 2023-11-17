@@ -140,7 +140,10 @@ namespace glass {
             auto computer = quant.get_computer(q);
             searcher::LinearPool<typename Quantizer::template Computer<0>::dist_type>
                     pool(nb, std::max(k, ef), k);
-            graph.initialize_search(pool, computer); // 初始化 eps 和距离，保存在候选列表 pool 中
+            // initialize_search：
+            // 对于 NSG ，初始化 eps 和距离，保存在候选列表 pool 中，如果
+            // 对于 HNSW，在 level0 以上的层中进行搜索，把搜索结果保存在候选列表 pool 中，作为 SearchImpl 在 level0 层中进行搜索的 ep
+            graph.initialize_search(pool, computer);
             SearchImpl(pool, computer); // 使用了类型推导
             quant.reorder(pool, q, dst, k);
         }

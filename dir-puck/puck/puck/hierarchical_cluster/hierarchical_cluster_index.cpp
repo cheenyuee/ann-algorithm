@@ -105,7 +105,7 @@ bool check_file_length_info(const std::string& file_name,
     return true;
 }
 
-//写码本
+// 写码本（按固定格式输出）
 int write_fvec_format(const char* file_name, const uint32_t dim, const uint64_t n, const float* fea_vocab) {
     LOG(INFO) << "start write_fvec_format " << file_name;
     FILE* out_fvec_init = fopen(file_name, "wb");
@@ -1333,6 +1333,9 @@ int random_sampling(const std::string& init_file_name, const u_int64_t total_cnt
     return available_sample;
 }
 
+/**
+ * check_feature_dim：检查向量维度并计算向量个数
+ */
 int HierarchicalClusterIndex::check_feature_dim() {
     int fd = -1;
     fd = open(_conf.feature_file_name.c_str(), O_RDONLY);
@@ -1375,6 +1378,7 @@ int HierarchicalClusterIndex::train() {
         return -1;
     }
 
+    // 使用的 train_points_count 不能超过数据集大小
     if (_conf.total_point_count < (uint32_t)FLAGS_train_points_count) {
         google::SetCommandLineOption("train_points_count", std::to_string(_conf.total_point_count).c_str());
     }
@@ -1510,6 +1514,9 @@ void HierarchicalClusterIndex::init_context_pool() {
     }
 }
 
+/**
+ * 把特征向量归一化为单位向量（模等于1）
+ */
 const float* HierarchicalClusterIndex::normalization(SearchContext* context, const float* feature) {
     SearchCellData& search_cell_data = context->get_search_cell_data();
 

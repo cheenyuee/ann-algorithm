@@ -58,11 +58,14 @@ int read_feature_data(std::string& input_file, std::vector<std::string>& pic_nam
 
 int insert(puck::RealtimeInsertPuckIndex* index, const float* feature, std::string lable) {
     puck::InsertRequest insert_request;
-    insert_request.feature = feature;
-    insert_request.label = lable;
+    insert_request.feature = feature; // 插入的 feature（特征向量）
+    insert_request.label = lable;   // 插入的 pic_name
     return index->insert(&insert_request);
 }
 
+/**
+ * insert_demo 用于测试 RealtimeInsertPuckIndex
+ */
 int main(int argc, char** argv) {
     google::ParseCommandLineFlags(&argc, &argv, true);
 

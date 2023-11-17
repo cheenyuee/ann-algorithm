@@ -767,6 +767,7 @@ int PuckIndex::train() {
         return -1;
     }
 
+    // 先训练父类的 HierarchicalClusterIndex 
     if (this->HierarchicalClusterIndex::train() != 0) {
         LOG(ERROR) << "HierarchicalClusterIndex train has error.";
         return -1;
@@ -833,12 +834,15 @@ int PuckIndex::train() {
     std::unique_ptr<int[]> pq_assign(new int[pq_train_points_count]);
     int idx = 0;
 
-    for (auto quantized : quantizations) {
+    // 分别进行 _filter_quantization 和 _pq_quantization
+    for (auto quantized : quantizations) { 
         auto& cur_params = quantized->get_quantization_params();
         LOG(INFO) << cur_params.nsq << " " << cur_params.lsq;
         std::unique_ptr<float[]> sub_resudial(new float[pq_train_points_count * cur_params.lsq]);
 
+        // 分别处理各个子向量空间
         for (uint32_t k = 0; k < (uint32_t)cur_params.nsq; k++) {
+            // 把参与训练的特征向量中的第 k 个子向量拷贝出来
             uint32_t cur_lsq = std::min(cur_params.lsq, cur_params.dim - k * cur_params.lsq);
             memset(sub_resudial.get(), 0, sizeof(float) * pq_train_points_count * cur_params.lsq);
 
@@ -848,6 +852,7 @@ int PuckIndex::train() {
                        sizeof(float) * cur_lsq);
             }
 
+            // 使用 k-means 计算此子向量空间的聚类中心
             float* cur_pq_centroids = quantized->get_sub_coodbooks(k);
 
             memset(pq_assign.get(), 0, sizeof(int) * pq_train_points_count);
@@ -858,6 +863,7 @@ int PuckIndex::train() {
                                               cur_pq_centroids, nullptr, pq_assign.get());
             LOG(INFO) << "deviation error of init sub " << k << " pq codebook clusters is " << err;
 
+            // 计算子向量与对应聚类中心的残差
             for (uint32_t i = 0; i < pq_train_points_count; ++i) {
                 float* cur_train_point = kmeans_train_vocab.get() + i * _conf.feature_dim;
                 int cur_assign = pq_assign.get()[i];

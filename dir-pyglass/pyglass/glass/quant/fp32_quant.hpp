@@ -7,7 +7,7 @@
 namespace glass {
 
     /**
-     * 量化：把FP32的值域压缩到INT8
+     * FP32 量化：使用原始数据（32位 float point 类型）
      */
     template<Metric metric, int DIM = 0>
     struct FP32Quantizer {
@@ -31,9 +31,7 @@ namespace glass {
             }
         }
 
-        /**
-         * 将 Float Point（32 bit）转化为 int（8 bit）
-         */
+
         void encode(const float *from, char *to) { std::memcpy(to, from, d * 4); }
 
         char *get_data(int u) const { return codes + u * code_size; }

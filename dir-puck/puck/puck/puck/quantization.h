@@ -31,8 +31,8 @@ namespace puck {
 struct QuantizationParams {
     uint32_t ks;
     uint32_t dim;
-    uint32_t nsq;
-    uint32_t lsq;
+    uint32_t nsq; // 子向量的个数
+    uint32_t lsq; // 子向量的长度
     void show();
     int init(const IndexConf& conf, bool is_filter = false) {
         if (conf.ks != 256

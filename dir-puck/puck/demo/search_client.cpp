@@ -54,6 +54,9 @@ int read_feature_data(std::string& input_file, std::vector<std::string>& pic_nam
     return ret;
 }
 
+/**
+ * search_client 用于进行搜索（参数见 Readme 中的 search 步骤）
+ */
 int main(int argc, char** argv) {
     google::ParseCommandLineFlags(&argc, &argv, true);
 

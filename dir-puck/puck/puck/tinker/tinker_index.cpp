@@ -176,8 +176,8 @@ int TinkerIndex::build() {
     this->HierarchicalClusterIndex::build();
     uint32_t cell_cnt = _conf.coarse_cluster_count * _conf.fine_cluster_count;
     std::vector<uint32_t> cell_start_memory_idx(cell_cnt + 1, _conf.total_point_count);
-    std::vector<uint32_t> local_to_memory_idx(_conf.total_point_count);
-    //读取local idx，转换memory idx
+    std::vector<uint32_t> local_to_memory_idx(_conf.total_point_count); // 保存向量id 到 centroid/cell id 的映射关系
+    // 读取local idx，转换memory idx
     convert_local_to_memory_idx(cell_start_memory_idx.data(), local_to_memory_idx.data());
     similarity::ObjectVector object_data(_conf.total_point_count);
     size_t datalength = _conf.feature_dim * sizeof(float);
@@ -187,6 +187,7 @@ int TinkerIndex::build() {
     std::vector<float> temp_data_fea(_conf.feature_dim);
     int feature_dim = -1;
 
+    // 循环读取每个特征向量
     for (uint64_t i = 0; i < local_to_memory_idx.size(); ++i) {
         data_stream.read((char*)&feature_dim, sizeof(int));
 

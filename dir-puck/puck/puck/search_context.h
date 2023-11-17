@@ -31,7 +31,7 @@ typedef std::vector<std::pair<float, std::pair<FineCluster*, uint32_t>>> Distanc
 
 struct SearchCellData {
     float* query_norm;                  //存储归一后的query,长度=feature_dim
-    float* cluster_inner_product;       //query与聚类中心的内积,长度=max(coarse_cluster_count, fine_cluster_count)
+    float* cluster_inner_product;       //query与聚类中心的内积,长度=max(coarse_cluster_count, fine_cluster_count)，因为在 search_nearest_coarse_cluster 和 search_nearest_fine_cluster 中被复用
     float* coarse_distance;             //query与一级聚类中心的距离，和coarse_tag一起在最大堆调整时使用,长度=search_coarse_count
     uint32_t* coarse_tag;              //与query距离最近的一级聚类中心的id,长度=search_coarse_count
     float* fine_distance;
