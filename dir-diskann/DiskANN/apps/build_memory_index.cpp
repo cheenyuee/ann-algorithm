@@ -20,10 +20,12 @@
 #include "ann_exception.h"
 #include "index_factory.h"
 
+// boost 是一个解析命令行的库
 namespace po = boost::program_options;
 
 int main(int argc, char **argv)
-{
+{   
+    // 参数变量的含义见 workflows 目录
     std::string data_type, dist_fn, data_path, index_path_prefix, label_file, universal_label, label_type;
     uint32_t num_threads, R, L, Lf, build_PQ_bytes;
     float alpha;
@@ -35,6 +37,7 @@ int main(int argc, char **argv)
     {
         desc.add_options()("help,h", "Print information on arguments");
 
+        // 设置必选参数
         // Required parameters
         po::options_description required_configs("Required");
         required_configs.add_options()("data_type", po::value<std::string>(&data_type)->required(),
@@ -46,6 +49,7 @@ int main(int argc, char **argv)
         required_configs.add_options()("data_path", po::value<std::string>(&data_path)->required(),
                                        program_options_utils::INPUT_DATA_PATH);
 
+        // 设置可选参数
         // Optional parameters
         po::options_description optional_configs("Optional");
         optional_configs.add_options()("num_threads,T",
@@ -74,6 +78,7 @@ int main(int argc, char **argv)
         // Merge required and optional parameters
         desc.add(required_configs).add(optional_configs);
 
+        // 解析命令行
         po::variables_map vm;
         po::store(po::parse_command_line(argc, argv, desc), vm);
         if (vm.count("help"))
@@ -91,6 +96,7 @@ int main(int argc, char **argv)
         return -1;
     }
 
+    // 确定距离度量
     diskann::Metric metric;
     if (dist_fn == std::string("mips"))
     {
@@ -117,6 +123,7 @@ int main(int argc, char **argv)
         diskann::cout << "Starting index build with R: " << R << "  Lbuild: " << L << "  alpha: " << alpha
                       << "  #threads: " << num_threads << std::endl;
 
+        // 读 metadata，即 point 的个数和维度
         size_t data_num, data_dim;
         diskann::get_bin_metadata(data_path, data_num, data_dim);
 
