@@ -26,6 +26,10 @@ void load_data(char* filename, float*& data, unsigned& num,
   }
   in.close();
 }
+
+/**
+ * Convert kNN Graph to NSG
+ */
 int main(int argc, char** argv) {
   if (argc != 7) {
     std::cout << argv[0] << " data_file nn_graph_path L R C save_graph_file"
