@@ -12,10 +12,16 @@
 namespace efanna2e {
 #define _CONTROL_NUM 100
 
+    /*
+     * 构造函数
+     */
     IndexNSG::IndexNSG(const size_t dimension, const size_t n, Metric m,
                        Index *initializer) // Index 是父类构造函数，tests 目录中 initializer 都是 nullptr
             : Index(dimension, n, m), initializer_{initializer} {}
 
+    /*
+     * 析构函数
+     */
     IndexNSG::~IndexNSG() {
         if (distance_ != nullptr) {
             delete distance_;
@@ -31,6 +37,9 @@ namespace efanna2e {
         }
     }
 
+    /*
+     * 保存 final_graph_ 到文件
+     */
     void IndexNSG::Save(const char *filename) {
         std::ofstream out(filename, std::ios::binary | std::ios::out);
         assert(final_graph_.size() == nd_);
@@ -45,6 +54,9 @@ namespace efanna2e {
         out.close();
     }
 
+    /*
+     * 从文件读取 final_graph_
+     */
     void IndexNSG::Load(const char *filename) {
         std::ifstream in(filename, std::ios::binary);
         in.read((char *) &width, sizeof(unsigned));
@@ -64,6 +76,9 @@ namespace efanna2e {
         // std::cout<<cc<<std::endl;
     }
 
+    /*
+     * Build 函数中需要先调用 Load_nn_graph，因为 NSG 算法基于 nn_graph 进行构图
+     */
     void IndexNSG::Load_nn_graph(const char *filename) {
         std::ifstream in(filename, std::ios::binary);
         unsigned k;
@@ -86,6 +101,11 @@ namespace efanna2e {
         in.close();
     }
 
+    /**
+     * 通过搜索获取 neighbors
+     * @param retset 搜索结果
+     * @param fullset 搜索过程中的所有访问点
+     */
     void IndexNSG::get_neighbors(const float *query, const Parameters &parameter,
                                  std::vector<Neighbor> &retset,
                                  std::vector<Neighbor> &fullset) {
@@ -95,13 +115,18 @@ namespace efanna2e {
         std::vector<unsigned> init_ids(L);
         // initializer_->Search(query, nullptr, L, parameter, init_ids.data());
 
-        boost::dynamic_bitset<> flags{nd_, 0};
+        // flags 标记是否已访问
+        boost::dynamic_bitset<> flags{nd_, 0}
+
+        // 将 entry point 的邻居加入初始化队列
         L = 0;
         for (unsigned i = 0; i < init_ids.size() && i < final_graph_[ep_].size(); i++) {
             init_ids[i] = final_graph_[ep_][i];
             flags[init_ids[i]] = true;
             L++;
         }
+
+        // 随机法补充初始化队列
         while (L < init_ids.size()) {
             unsigned id = rand() % nd_;
             if (flags[id]) continue;
@@ -110,6 +135,7 @@ namespace efanna2e {
             flags[id] = true;
         }
 
+        // 计算距离并排序，初始化结果队列 retset
         L = 0;
         for (unsigned i = 0; i < init_ids.size(); i++) {
             unsigned id = init_ids[i];
@@ -121,35 +147,43 @@ namespace efanna2e {
             // flags[id] = 1;
             L++;
         }
-
         std::sort(retset.begin(), retset.begin() + L);
+
+        /// 开始搜索（单队列）
+        // L：结果队列大小
+        // k：下一次check点的下标
+        /// retset[k].flag 代表是否可以进行 check
+        // retset[k].flag == true：可以进行 check
+        // retset[k].flag == false：不可以进行 check（已经被check过了）
+        /// flags[id] 代表是否已经入队（访问）过
         int k = 0;
         while (k < (int) L) {
-            int nk = L;
+            int nk = L; // nk 是此次迭代入队点的最小下标，初始化为 L
 
-            if (retset[k].flag) {
+            if (retset[k].flag) { // 可以进行 check
                 retset[k].flag = false;
-                unsigned n = retset[k].id;
+                unsigned n = retset[k].id; // 选择点 n 进行check
 
-                for (unsigned m = 0; m < final_graph_[n].size(); ++m) {
+                for (unsigned m = 0; m < final_graph_[n].size(); ++m) { // 对于 n 的每个邻居
                     unsigned id = final_graph_[n][m];
                     if (flags[id]) continue;
-                    flags[id] = 1;
+                    flags[id] = 1; // 标记 id 已访问
 
                     float dist = distance_->compare(query, data_ + dimension_ * (size_t) id,
                                                     (unsigned) dimension_);
                     Neighbor nn(id, dist, true);
-                    fullset.push_back(nn);
-                    if (dist >= retset[L - 1].distance) continue;
-                    int r = InsertIntoPool(retset.data(), L, nn);
+                    fullset.push_back(nn); // retset 保存结果，而 fullset 保存所有访问过的点
+                    if (dist >= retset[L - 1].distance) continue; // 只有小于队列中的最大距离才入队
+                    int r = InsertIntoPool(retset.data(), L, nn); // r 是点插入后所在的下标
 
-                    if (L + 1 < retset.size()) ++L;
-                    if (r < nk) nk = r;
+                    if (L + 1 < retset.size()) ++L; // 如果结果队列中的实际元素个数不足，可以添加新元素
+                    if (r < nk) nk = r; // 更新 nk
                 }
             }
-            if (nk <= k)
+            // nk 是此次迭代入队点的最小下标，下一轮选择 nk 和 k+1中的最小值进行check
+            if (nk <= k) // nk 前的点都是已经被 check 过的，下次选择 nk 进行check
                 k = nk;
-            else
+            else // k+1 前的点都是已经被 check 过的，下次选择 k+1 进行check
                 ++k;
         }
     }
@@ -223,7 +257,11 @@ namespace efanna2e {
         }
     }
 
+    /*
+     * 确定 NSG 的入口点（导航点）
+     */
     void IndexNSG::init_graph(const Parameters &parameters) {
+        // 计算质心
         float *center = new float[dimension_];
         for (unsigned j = 0; j < dimension_; j++) center[j] = 0;
         for (unsigned i = 0; i < nd_; i++) {
@@ -234,6 +272,7 @@ namespace efanna2e {
         for (unsigned j = 0; j < dimension_; j++) {
             center[j] /= nd_;
         }
+        // 获取近似质心点，作为入口点（navigating point）
         std::vector<Neighbor> tmp, pool;
         ep_ = rand() % nd_;  // random initialize navigating point
         get_neighbors(center, parameters, tmp, pool);
@@ -245,11 +284,12 @@ namespace efanna2e {
                               const Parameters &parameter,
                               boost::dynamic_bitset<> &flags,
                               SimpleNeighbor *cut_graph_) {
-        unsigned range = parameter.Get<unsigned>("R");
-        unsigned maxc = parameter.Get<unsigned>("C");
+        unsigned range = parameter.Get<unsigned>("R"); // 最大出度
+        unsigned maxc = parameter.Get<unsigned>("C"); // 最多 neighbor candidate 数量（所有途径点中距离最小的C个）
         width = range;
         unsigned start = 0;
 
+        // 将原 knng 上没有被访问的 q 的邻居也加入备选集 pool
         for (unsigned nn = 0; nn < final_graph_[q].size(); nn++) {
             unsigned id = final_graph_[q][nn];
             if (flags[id]) continue;
@@ -260,11 +300,11 @@ namespace efanna2e {
         }
 
         std::sort(pool.begin(), pool.end());
-        std::vector<Neighbor> result;
-        if (pool[start].id == q) start++;
+        std::vector<Neighbor> result; // 存放剪枝结果
+        if (pool[start].id == q) start++; // q 不能是自己的 neighbor
         result.push_back(pool[start]);
 
-        while (result.size() < range && (++start) < pool.size() && start < maxc) {
+        while (result.size() < range && (++start) < pool.size() && start < maxc) { // MRNG 的剪枝方法
             auto &p = pool[start];
             bool occlude = false;
             for (unsigned t = 0; t < result.size(); t++) {
@@ -375,6 +415,7 @@ namespace efanna2e {
 
 #pragma omp parallel
         {
+            // 这里不需要加锁，因为不同线程 get_neighbors 只会读 final_graph_，sync_prune 只会修改 cut_graph_ 不同地方，不会产生冲突
             // unsigned cnt = 0;
             std::vector<Neighbor> pool, tmp;
             boost::dynamic_bitset<> flags{nd_, 0};
@@ -404,13 +445,14 @@ namespace efanna2e {
     void IndexNSG::Build(size_t n, const float *data, const Parameters &parameters) {
         std::string nn_graph_path = parameters.Get<std::string>("nn_graph_path");
         unsigned range = parameters.Get<unsigned>("R");
-        Load_nn_graph(nn_graph_path.c_str());
-        data_ = data;
-        init_graph(parameters);
+        Load_nn_graph(nn_graph_path.c_str()); // 加载 nn_graph
+        data_ = data; // 加载 base 数据
+        init_graph(parameters); // 获取 navigating point
         SimpleNeighbor *cut_graph_ = new SimpleNeighbor[nd_ * (size_t) range];
-        Link(parameters, cut_graph_);
+        Link(parameters, cut_graph_); // 生成 NSG 图
         final_graph_.resize(nd_);
 
+        // 将 cut_graph_ 整理填入 final_graph_
         for (size_t i = 0; i < nd_; i++) {
             SimpleNeighbor *pool = cut_graph_ + i * (size_t) range;
             unsigned pool_size = 0;
@@ -425,8 +467,10 @@ namespace efanna2e {
             }
         }
 
+        // 形成DFS树，进行连通
         tree_grow(parameters);
 
+        // 统计最大、最小、平均 出度
         unsigned max = 0, min = 1e6, avg = 0;
         for (size_t i = 0; i < nd_; i++) {
             auto size = final_graph_[i].size();
@@ -441,14 +485,14 @@ namespace efanna2e {
         delete cut_graph_;
     }
 
-/**
- * test_nsg_search.cpp 中调用
- * @param query 一条 query 数据
- * @param x 所有 base 数据
- * @param K Top-K
- * @param parameters 搜索参数
- * @param indices 保存搜索结果
- */
+    /**
+     * test_nsg_search.cpp 中调用
+     * @param query 一条 query 数据
+     * @param x 所有 base 数据
+     * @param K Top-K
+     * @param parameters 搜索参数
+     * @param indices 保存搜索结果
+     */
     void IndexNSG::Search(const float *query, const float *x, size_t K,
                           const Parameters &parameters, unsigned *indices) {
         const unsigned L = parameters.Get<unsigned>("L_search");
@@ -513,13 +557,13 @@ namespace efanna2e {
         }
     }
 
-/**
- * test_nsg_optimized_search.cpp 中调用
- * @param query 一条 query 数据
- * @param K Top-K
- * @param parameters 搜索参数
- * @param indices 保存搜索结果
- */
+    /**
+     * test_nsg_optimized_search.cpp 中调用
+     * @param query 一条 query 数据
+     * @param K Top-K
+     * @param parameters 搜索参数
+     * @param indices 保存搜索结果
+     */
     void IndexNSG::SearchWithOptGraph(const float *query, size_t K,
                                       const Parameters &parameters, unsigned *indices) {
         unsigned L = parameters.Get<unsigned>("L_search");
