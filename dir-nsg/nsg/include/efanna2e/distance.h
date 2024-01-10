@@ -315,8 +315,8 @@ namespace efanna2e{
       return result;
     }
     using DistanceInnerProduct::compare;
-    float compare(const float* a, const float* b, float norm, unsigned size) const {//not implement
-      float result = -2 * DistanceInnerProduct::compare(a, b, size);
+    float compare(const float* a, const float* b, float norm, unsigned size) const {//not implement // norm 是 base data 各个维度的平方和
+      float result = -2 * DistanceInnerProduct::compare(a, b, size); // 对L2距离（差平方和）做了等价变换（L2距离开方后可以发现是等价的）
       result += norm;
       return result;
     }

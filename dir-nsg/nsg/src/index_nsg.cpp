@@ -653,29 +653,32 @@ namespace efanna2e {
         }
     }
 
+    /**
+     * 优化图结构，将 base data和 neighbor list 存放在一起，并使用 DistanceFastL2 进行距离计算
+     */
     void IndexNSG::OptimizeGraph(float *data) {  // use after build or load
 
         data_ = data;
-        data_len = (dimension_ + 1) * sizeof(float);
-        neighbor_len = (width + 1) * sizeof(unsigned);
-        node_size = data_len + neighbor_len;
+        data_len = (dimension_ + 1) * sizeof(float); // 数据长度
+        neighbor_len = (width + 1) * sizeof(unsigned); // 邻居表长度
+        node_size = data_len + neighbor_len; // 一个 node 所占长度
         opt_graph_ = (char *) malloc(node_size * nd_);
         DistanceFastL2 *dist_fast = (DistanceFastL2 *) distance_;
         for (unsigned i = 0; i < nd_; i++) {
             char *cur_node_offset = opt_graph_ + i * node_size;
-            float cur_norm = dist_fast->norm(data_ + i * dimension_, dimension_);
-            std::memcpy(cur_node_offset, &cur_norm, sizeof(float));
-            std::memcpy(cur_node_offset + sizeof(float), data_ + i * dimension_,
+            float cur_norm = dist_fast->norm(data_ + i * dimension_, dimension_); // 计算所有维度的平方和 norm
+            std::memcpy(cur_node_offset, &cur_norm, sizeof(float)); // 保存 norm
+            std::memcpy(cur_node_offset + sizeof(float), data_ + i * dimension_, // 保存 base data
                         data_len - sizeof(float));
 
             cur_node_offset += data_len;
             unsigned k = final_graph_[i].size();
-            std::memcpy(cur_node_offset, &k, sizeof(unsigned));
+            std::memcpy(cur_node_offset, &k, sizeof(unsigned)); // 保存邻居数量
             std::memcpy(cur_node_offset + sizeof(unsigned), final_graph_[i].data(),
-                        k * sizeof(unsigned));
-            std::vector<unsigned>().swap(final_graph_[i]);
+                        k * sizeof(unsigned)); // 保存 neighbor list
+            std::vector<unsigned>().swap(final_graph_[i]); // 释放 final_graph[i] 空间
         }
-        CompactGraph().swap(final_graph_);
+        CompactGraph().swap(final_graph_); // 释放 final_graph 空间
     }
 
     void IndexNSG::DFS(boost::dynamic_bitset<> &flag, unsigned root, unsigned &cnt) {
